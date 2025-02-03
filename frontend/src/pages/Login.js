@@ -30,10 +30,6 @@ const Login = () => {
               </a>
             </div>
             <input
-             
-jsx
-복사
-편집
               type="email"
               id="email"
               placeholder="이메일 입력"
@@ -88,7 +84,7 @@ jsx
          <div className="text-center">
           <span className="text-muted">아직 계정이 없으신가요? </span>
           <Link
-            to="/login/signup"
+            to="/signup"
             className="text-primary text-decoration-none fw-bold"
           >
             회원가입

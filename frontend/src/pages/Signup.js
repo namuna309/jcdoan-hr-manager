@@ -1,6 +1,14 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 
 const Signup = () => {
+  const navigate = useNavigate();
+
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    navigate('/login'); // 회원가입 후 로그인 페이지로 이동
+  };
+
   return (
     <div className="container-fluid vh-100 d-flex flex-column justify-content-center bg-white">
       {/* 회원가입 폼 */}

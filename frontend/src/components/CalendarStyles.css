@@ -2,3 +2,17 @@ a {
     text-decoration-line: none;
     color: black;
 }
+
+.card-body {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.fc-deleteModeButton-button {
+    background-color: red !important;
+    color: white !important;
+    border: none !important;
+    padding: 5px 10px !important;
+    border-radius: 5px !important;
+  }

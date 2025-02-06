@@ -19,13 +19,99 @@ const EmployeeDashboard = () => {
   const [leaveEndDate, setLeaveEndDate] = useState(""); // 선택 가능
   const [startLeaveType, setStartLeaveType] = useState("full");
   const [endLeaveType, setEndLeaveType] = useState("full");
-
   const [selectedEvent, setSelectedEvent] = useState(null);
-
   const [contextMenu, setContextMenu] = useState(null);
   const [selectedEventId, setSelectedEventId] = useState(null);
+  const calculateWorkDays = (startDate) => {
+    const start = new Date(startDate);
+    const today = new Date();
+    const diffTime = Math.abs(today - start);
+    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + "일";
+  };
+  // 사용자 정보 상태 관리 추가
+  const [userInfo, setUserInfo] = useState({
+    name: "김아름",
+    startDate: "2022-12-01",
+    workDays: calculateWorkDays("2022-12-01"),
+    usedLeave: 10,  // 숫자로 변경
+    remainingLeave: 5  // 숫자로 변경
+  });
 
+  // 연차 계산 함수
+  const calculateLeaveDays = () => {
+    if (!leaveStartDate) return 0;
+    
+    // 시작일이 오전 반차인 경우
+    if (startLeaveType === "morning") return 0.5;
+    
+    // 시작일이 오후 반차이고 종료일이 없는 경우
+    if (startLeaveType === "afternoon" && !leaveEndDate) return 0.5;
+    
+    const start = new Date(leaveStartDate);
+    const end = leaveEndDate ? new Date(leaveEndDate) : new Date(leaveStartDate);
+    
+    // 날짜 차이 계산 (밀리초를 일수로 변환)
+    const diffTime = Math.abs(end - start);
+    let diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
 
+    if (startLeaveType === "full") {
+      if (endLeaveType === "morning") {
+        return diffDays - 0.5;
+      }
+      return diffDays;
+    } else if (startLeaveType === "afternoon") {
+      if (endLeaveType === "morning") {
+        return diffDays - 0.5 - 0.5;
+      }
+      return diffDays - 0.5;
+    }
+
+    return 0;
+  };
+
+  // 최소 종료 날짜 계산 함수 추가
+  const calculateMinEndDate = () => {
+    if (!leaveStartDate) return '';
+    
+    if (startLeaveType === 'morning') {
+      return leaveStartDate;
+    } else {
+      const nextDay = new Date(leaveStartDate);
+      nextDay.setDate(nextDay.getDate() + 1);
+      return nextDay.toISOString().split('T')[0];
+    }
+  };
+
+  // 시작일 유형 변경 핸들러 수정
+  const handleStartTypeChange = (e) => {
+    const newType = e.target.value;
+    setStartLeaveType(newType);
+    // 시작일 유형이 바뀌면 종료일 관련 상태 초기화
+    setLeaveEndDate("");
+    setEndLeaveType("full");
+  };
+  // 모달 초기화 함수 추가
+  const resetModal = () => {
+    setStartLeaveType("full");
+    setLeaveStartDate("");
+    setEndLeaveType("full");
+    setLeaveEndDate("");
+    setCalculatedLeave(0);
+  };
+
+  // 모달 닫기 핸들러 수정
+  const handleCloseModal = () => {
+    resetModal();
+    setShowModal(false);
+  };
+
+  // 계산된 연차 수를 표시하기 위한 상태 추가
+  const [calculatedLeave, setCalculatedLeave] = useState(0);
+
+  // useEffect를 사용하여 연차 계산 값을 실시간으로 업데이트
+  useEffect(() => {
+    setCalculatedLeave(calculateLeaveDays());
+  }, [leaveStartDate, leaveEndDate, startLeaveType, endLeaveType]);
   // 클릭하면 컨텍스트 메뉴 닫기
   useEffect(() => {
     if (contextMenu) {
@@ -48,6 +134,22 @@ const EmployeeDashboard = () => {
       alert("시작 날짜가 종료 날짜보다 늦을 수 없습니다.");
       return;
     }
+
+    // 연차 일수 계산
+    const leaveDays = calculateLeaveDays();
+
+    // 잔여 연차 확인
+    if (userInfo.remainingLeave < leaveDays) {
+      alert("잔여 연차 일수가 부족합니다.");
+      return;
+    }
+
+    // 연차 상태 업데이트
+    setUserInfo(prevInfo => ({
+      ...prevInfo,
+      usedLeave: prevInfo.usedLeave + leaveDays,
+      remainingLeave: prevInfo.remainingLeave - leaveDays
+    }));
 
     const endDateForCalendar = end ? new Date(end) : null;
     if (endDateForCalendar) {
@@ -83,43 +185,13 @@ const EmployeeDashboard = () => {
     };
 
     setEvents([...events, newEvent]);
+    resetModal(); // 초기화 함수 호출
     setShowModal(false);
-    setLeaveStartDate("");
-    setLeaveEndDate("");
-    setStartLeaveType("full");
-    setEndLeaveType("full");
   }
-  
-  const calculateWorkDays = (startDate) => {
-    const start = new Date(startDate);
-    const today = new Date();
-    const diffTime = Math.abs(today - start);
-    return Math.floor(diffTime / (1000 * 60 * 60 * 24)) + "일";
-  };
-
-  const userInfo = {
-    name: "김아름",
-    startDate: "2022-12-01",
-    workDays: calculateWorkDays("2022-12-01"),
-    usedLeave: "10일",
-    remainingLeave: "5일"
-  };
 
   
-  // const handleDateSelect = (selectInfo) => {
-  //   const title = prompt("새로운 이벤트 제목을 입력하세요:");
-  //   if (title) {
-  //     const newEvent = {
-  //       id: String(events.length + 1),
-  //       title,
-  //       start: selectInfo.startStr,
-  //       end: selectInfo.endStr,
-  //       allDay: selectInfo.allDay,
-  //     };
-  //     setEvents((prevEvents) => [...prevEvents, newEvent]);
-  //     selectInfo.view.calendar.unselect();
-  //   }
-  // };
+  
+
 
   const handleEventClick = (clickInfo) => {
       const eventTitle = clickInfo.event.title;
@@ -172,20 +244,20 @@ const EmployeeDashboard = () => {
     <Container fluid className="vh-100 d-flex flex-column justify-content-center align-items-center">
       <Row className="w-100 h-100 justify-content-center align-items-center">
         <Col md={4} className="h-100 d-flex flex-column justify-content-center">
-            <Card className="shadow-lg rounded-3 border-0 bg-light p-4 w-100 h-100">
-              <Card.Body>
-                <Card.Title className="fw-bold text-primary text-center">사원 정보</Card.Title>
-                <Card.Text className="text-secondary text-center">이름: {userInfo.name}</Card.Text>
-                <Card.Text className="text-secondary text-center">입사일: {userInfo.startDate}</Card.Text>
-                <Card.Text className="text-secondary text-center">근무일수: {userInfo.workDays}</Card.Text>
-                <Card.Text className="text-secondary text-center">사용 연차: {userInfo.usedLeave}</Card.Text>
-                <Card.Text className="text-secondary text-center">잔여 연차 일수: {userInfo.remainingLeave}</Card.Text>
-                <Button variant="primary" className="w-100 mt-2" onClick={() => setShowModal(true)}>
-                  연차 신청하기
-                </Button>
-              </Card.Body>
-            </Card>
-          </Col>
+          <Card className="shadow-lg rounded-3 border-0 bg-light p-4 w-100 h-100">
+            <Card.Body>
+              <Card.Title className="fw-bold text-primary text-center">사원 정보</Card.Title>
+              <Card.Text className="text-secondary text-center">이름: {userInfo.name}</Card.Text>
+              <Card.Text className="text-secondary text-center">입사일: {userInfo.startDate}</Card.Text>
+              <Card.Text className="text-secondary text-center">근무일수: {userInfo.workDays}</Card.Text>
+              <Card.Text className="text-secondary text-center">사용 연차: {userInfo.usedLeave}일</Card.Text>
+              <Card.Text className="text-secondary text-center">잔여 연차 일수: {userInfo.remainingLeave}일</Card.Text>
+              <Button variant="primary" className="w-100 mt-2" onClick={() => setShowModal(true)}>
+                연차 신청하기
+              </Button>
+            </Card.Body>
+          </Card>
+        </Col>
 
         <Col md={8} className="h-100 d-flex flex-column justify-content-center">
           <Card className="shadow-lg rounded-3 border-0 bg-light p-4 w-100 h-100 d-flex flex-column">
@@ -242,26 +314,24 @@ const EmployeeDashboard = () => {
         </div>
       )}
   
-      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+  <Modal 
+        show={showModal} 
+        onHide={handleCloseModal}  // 모달 닫기 이벤트
+        backdrop={true}            // true로 설정하여 외부 클릭 활성화
+        keyboard={true}            // ESC 키 활성화
+        centered
+      >
         <Modal.Header closeButton>
           <Modal.Title className="fw-bold">연차 신청</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form>
-            {/* 휴가 시작 날짜 + 유형 선택 */}
             <div className="d-flex align-items-center mb-3">
               <Form.Group className="me-2">
                 <Form.Label className="fw-semibold">시작일 유형</Form.Label>
                 <Form.Select
                   value={startLeaveType}
-                  onChange={(e) => {
-                    const newType = e.target.value;
-                    setStartLeaveType(newType);
-                    if (newType === "morning") {
-                      setLeaveEndDate(""); // 종료일 초기화
-                      setEndLeaveType("full"); // 종료 유형 초기화
-                    }
-                  }}
+                  onChange={handleStartTypeChange}
                 >
                   <option value="full">연차</option>
                   <option value="morning">반차 - 오전</option>
@@ -273,24 +343,25 @@ const EmployeeDashboard = () => {
                 <Form.Control
                   type="date"
                   value={leaveStartDate}
-                  onChange={(e) => setLeaveStartDate(e.target.value)}
+                  onChange={(e) => {
+                    setLeaveStartDate(e.target.value);
+                    setLeaveEndDate("");
+                  }}
                   required
                 />
               </Form.Group>
             </div>
 
-            {/* 휴가 종료 날짜 + 유형 선택 (선택 사항) */}
             <div className="d-flex align-items-center">
               <Form.Group className="me-2">
                 <Form.Label className="fw-semibold">종료일 유형</Form.Label>
                 <Form.Select
                   value={endLeaveType}
                   onChange={(e) => setEndLeaveType(e.target.value)}
-                  disabled={startLeaveType === "morning"} // 오전 반차 선택 시 비활성화
+                  disabled={startLeaveType === "morning"}
                 >
                   <option value="full">연차</option>
                   <option value="morning">반차 - 오전</option>
-                  {/* 시작 유형이 연차(full) 또는 오후 반차(afternoon)인 경우, 종료 유형에서 오후 반차 제거 */}
                   {startLeaveType === "full" || startLeaveType === "afternoon" ? null : (
                     <option value="afternoon">반차 - 오후</option>
                   )}
@@ -302,19 +373,25 @@ const EmployeeDashboard = () => {
                   type="date"
                   value={leaveEndDate}
                   onChange={(e) => setLeaveEndDate(e.target.value)}
-                  disabled={startLeaveType === "morning"} // 오전 반차 선택 시 비활성화
+                  disabled={startLeaveType === "morning"}
+                  min={calculateMinEndDate()}
                 />
               </Form.Group>
             </div>
           </Form>
         </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" className="rounded-3" onClick={() => setShowModal(false)}>
-            닫기
-          </Button>
-          <Button variant="primary" className="rounded-3" onClick={handleLeaveSubmit}>
-            신청하기
-          </Button>
+        <Modal.Footer className="d-flex justify-content-between">
+          <div className="text-primary fw-semibold">
+            신청 연차: {calculatedLeave}일
+          </div>
+          <div>
+            <Button variant="secondary" className="rounded-3 me-2" onClick={handleCloseModal}>
+              닫기
+            </Button>
+            <Button variant="primary" className="rounded-3" onClick={handleLeaveSubmit}>
+              신청하기
+            </Button>
+          </div>
         </Modal.Footer>
       </Modal>
 
@@ -325,9 +402,9 @@ const EmployeeDashboard = () => {
         <Modal.Body>
           <p><strong>시작일:</strong> {selectedEvent?.start}</p>
           {selectedEvent?.start === selectedEvent?.end || !selectedEvent?.end ? (
-            <p><strong>종료일:</strong> {selectedEvent?.start}</p> // 1일짜리 연차/반차의 경우 종료일을 시작일과 동일하게 표시
+            <p><strong>종료일:</strong> {selectedEvent?.start}</p>
           ) : (
-            <p><strong>종료일:</strong> {selectedEvent?.end}</p> // 정상적인 기간 표시
+            <p><strong>종료일:</strong> {selectedEvent?.end}</p>
           )}
         </Modal.Body>
         <Modal.Footer>
